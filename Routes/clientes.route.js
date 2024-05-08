@@ -7,7 +7,8 @@ const {
   getAutoId,
   actualizarCliente,
   agregarNuevoEstado,
-  eliminarClientePermanentemente
+  eliminarClientePermanentemente,
+  subirNuevaFactura,
 } = require("../controllers/clientes.controller.js");
 const { autenticacion } = require("../middlewares/authenticated.js");
 const configureCloudinary = require("../utils/cloudinary.js");
@@ -16,6 +17,7 @@ const multipart = require("connect-multiparty");
 
 const md_upload = multipart({ uploadDir: "./uploads" });
 
+router.get("/files", [autenticacion, configureCloudinary], getFiles);
 router.get("/", autenticacion, getClientes);
 router.get("/:id", autenticacion, getAutoId);
 
@@ -29,9 +31,16 @@ router.patch("/editar/:id", autenticacion, actualizarCliente);
 
 router.patch("/agregar/:id", autenticacion, agregarNuevoEstado);
 
-router.get("/facturas", configureCloudinary, getFiles);
+router.post(
+  "/factura/:id",
+  [autenticacion, configureCloudinary, md_upload],
+  subirNuevaFactura
+);
 
-
-router.delete("/eliminar/:id", autenticacion, eliminarClientePermanentemente);
+router.delete(
+  "/eliminar/:id",
+  [configureCloudinary, autenticacion],
+  eliminarClientePermanentemente
+);
 
 module.exports = router;

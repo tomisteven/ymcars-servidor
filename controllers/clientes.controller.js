@@ -6,7 +6,7 @@ const cloudinary = require("cloudinary");
 
 const getClientes = async (req, res) => {
   const clientes = await Client.find();
-/*   const cli = clientes.filter((cliente) => cliente.eliminado === false); */
+  /*   const cli = clientes.filter((cliente) => cliente.eliminado === false); */
 
   return res.status(200).send(clientes.reverse());
 };
@@ -24,17 +24,16 @@ const getAutoId = async (req, res) => {
 };
 
 const getFiles = async (req, res) => {
-  try {
-    const files = await cloudinary.v2.api.resources({
+  cloudinary.v2.api
+    .resources({
       type: "upload",
-      filters: { format: "pdf" },
-      max_results: 30,
+    })
+    .then((result) => {
+      return (files = result.resources);
+    })
+    .catch((err) => {
+      res.status(500).json({ message: "Error al obtener los archivos", err });
     });
-
-    res.status(200).json({ files });
-  } catch (error) {
-    res.status(500).json({ message: "Error al obtener los archivos" });
-  }
 };
 
 const crearCliente = async (req, res) => {
@@ -59,7 +58,6 @@ const crearCliente = async (req, res) => {
 
     !aseguradora ? (req.body.aseguradora = "No especificada") : null;
     !numeroSiniestro ? (req.body.numeroSiniestro = "No especificado") : null;
-
 
     const client = new Client(req.body);
 
@@ -101,7 +99,29 @@ const agregarNuevoEstado = async (req, res) => {
   }
 };
 
-const subirArchivo = async (req, res) => {};
+const subirNuevaFactura = async (req, res) => {
+  try {
+    const client = await Client.findById(req.params.id);
+    if (!client) {
+      return res.status(404).json({ message: "Cliente no encontrado" });
+    }
+    const { factura } = req.files;
+    console.log(factura);
+    if (factura) {
+      const result = await cloudinary.v2.uploader.upload(factura.path);
+      client.factura.push({
+        url: result.url,
+        public_id: result.public_id,
+      });
+      await fs.unlink(factura.path);
+    }
+
+    await client.save();
+    res.status(200).json({ client, ok: true });
+  } catch (error) {
+    res.status(500).json({ message: "Error al subir la factura", error });
+  }
+};
 
 const obtenerArchivo = async (req, res) => {};
 
@@ -109,29 +129,33 @@ const eliminarArchivo = async (req, res) => {};
 
 const eliminarClientePermanentemente = async (req, res) => {
   const { id } = req.params;
+  const client = await Client.findById(id);
 
-  try {
-    const client = await Client.findByIdAndDelete(id);
-
-    if (!client) {
-      return res.status(404).json({ message: "Cliente no encontrado" });
-    }
-
-    res.status(200).json({ message: "Cliente eliminado" });
-  } catch (err) {
-    res.status(500).json({ message: "Error al eliminar el cliente", err });
+  if (client.factura.length > 0) {
+    client.factura.forEach(async (factura) => {
+      await cloudinary.v2.uploader.destroy(factura.public_id);
+      console.log("Factura eliminada");
+    });
   }
+
+  await Client.deleteOne({ _id: id });
+
+  if (!client) {
+    return res.status(404).json({ message: "Cliente no encontrado" });
+  }
+
+  res.status(200).json({ message: "Cliente eliminado" });
 };
 
 module.exports = {
   getClientes,
   getFiles,
   crearCliente,
-  subirArchivo,
   obtenerArchivo,
   eliminarArchivo,
   actualizarCliente,
   eliminarClientePermanentemente,
   getAutoId,
   agregarNuevoEstado,
+  subirNuevaFactura,
 };
