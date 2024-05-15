@@ -1,4 +1,6 @@
 const Client = require("../models/Client");
+const TestClient = require("../models/TestClient");
+const path = require('path');
 
 const fs = require("fs-extra");
 const bcrypt = require("bcrypt-nodejs");
@@ -35,6 +37,72 @@ const getFiles = async (req, res) => {
       res.status(500).json({ message: "Error al obtener los archivos", err });
     });
 };
+function guardarImagenBase64(rutaCarpeta, nombreImagen, base64Data) {
+  // Crear la ruta completa del archivo
+  const savePath = path.join(rutaCarpeta, nombreImagen);
+
+  // Eliminar el prefijo data:image/png;base64, si es necesario
+  const base64Image = base64Data.split(';base64,').pop();
+
+  // Guardar la imagen en la ruta especificada
+  fs.writeFile(savePath, base64Image, { encoding: 'base64' }, (err) => {
+    if (err) {
+      console.error('Error al guardar la imagen:', err);
+      return { success: false, message: 'Error al guardar la imagen' };
+    } else {
+      console.log('Imagen guardada correctamente en', savePath);
+      return { success: true, message: 'Imagen guardada correctamente' };
+    }
+  });
+}
+
+function crearClienteConFs(req, res) {
+
+  // Obtiene los datos del formulario
+  const clienteFs = new TestClient(req.body);
+
+  //console.log(req.files);
+  const file = req.files.factura; // `file` es el nombre del campo del archivo en el formulario
+
+  if (!file) {
+    return res.status(400).send('No se subió ningún archivo PDF.');
+  }
+
+  // Verifica que el archivo sea un PDF
+  if (file.type !== 'application/pdf') {
+    // Elimina el archivo temporal subido que no es un PDF
+    fs.unlink(file.path, (err) => {
+      if (err) {
+        console.error('Error al eliminar el archivo temporal:', err);
+      }
+    });
+    return res.status(400).send('Solo se permiten archivos PDF.');
+  }
+
+  // Define la ruta de destino del archivo
+  const targetPath = path.join('D:\\Escritorio\\temp\\FACTURAS', `${req.body.patente}-${file.originalFilename}`);
+
+  const id = file.path.split('\\').pop().split('.').shift();
+
+
+  clienteFs.factura = {
+    url: targetPath,
+    public_id: id,
+  };
+
+  // Mueve el archivo desde la ubicación temporal a la ubicación final
+  fs.rename(file.path, targetPath, (err) => {
+    if (err) {
+      console.error('Error al mover el archivo:', err);
+      return res.status(500).send('Error al guardar el archivo.');
+    }
+
+    console.log('Archivo PDF guardado correctamente en', targetPath);
+    // Guarda el cliente en la base de datos
+    clienteFs.save();
+    res.status(200).send(`Archivo PDF guardado correctamente en ${targetPath}`);
+  });
+}
 
 const crearCliente = async (req, res) => {
   try {
@@ -158,4 +226,5 @@ module.exports = {
   getAutoId,
   agregarNuevoEstado,
   subirNuevaFactura,
+  crearClienteConFs
 };

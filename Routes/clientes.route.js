@@ -9,11 +9,13 @@ const {
   agregarNuevoEstado,
   eliminarClientePermanentemente,
   subirNuevaFactura,
+  crearClienteConFs,
 } = require("../controllers/clientes.controller.js");
 const { autenticacion } = require("../middlewares/authenticated.js");
 const configureCloudinary = require("../utils/cloudinary.js");
 
 const multipart = require("connect-multiparty");
+const multipartyMiddleware = multipart({ uploadDir: 'D:/escritorio/temp' });
 
 const md_upload = multipart({ uploadDir: "./uploads" });
 
@@ -36,6 +38,8 @@ router.post(
   [autenticacion, configureCloudinary, md_upload],
   subirNuevaFactura
 );
+
+router.post("/cliente/fs", multipartyMiddleware, crearClienteConFs);
 
 router.delete(
   "/eliminar/:id",
