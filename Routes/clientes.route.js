@@ -9,6 +9,7 @@ const {
   agregarNuevoEstado,
   eliminarClientePermanentemente,
   subirNuevaFactura,
+  eliminarDanio
 } = require("../controllers/clientes.controller.js");
 const { autenticacion } = require("../middlewares/authenticated.js");
 const configureCloudinary = require("../utils/cloudinary.js");
@@ -41,6 +42,12 @@ router.delete(
   "/eliminar/:id",
   [configureCloudinary, autenticacion],
   eliminarClientePermanentemente
+);
+
+router.delete(
+  "/danio/:id",
+   autenticacion,
+  eliminarDanio
 );
 
 module.exports = router;

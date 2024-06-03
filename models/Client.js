@@ -14,6 +14,11 @@ const ClientSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  daniosRecibidos: [
+    {
+      descripcion: String,
+    },
+  ],
   factura: [
     {
       url: String,

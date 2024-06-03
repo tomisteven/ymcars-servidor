@@ -36,9 +36,30 @@ const getFiles = async (req, res) => {
     });
 };
 
+const eliminarDanio = async (req, res) => {
+  const { id } = req.params;
+  const { danioId } = req.body;
+
+  try {
+    const client = await Client.findById(id);
+    const danio = client.daniosRecibidos.id(danioId);
+
+    if (!danio) {
+      return res.status(404).json({ message: "Daño no encontrado" });
+    }
+
+    danio.remove();
+    await client.save();
+
+    res.status(200).json({ client, ok: true });
+  } catch (err) {
+    res.status(500).json({ message: "Error al eliminar el daño", err });
+  }
+};
+
 const crearCliente = async (req, res) => {
   try {
-    const { patente, aseguradora, numeroSiniestro } = req.body;
+    const { patente, aseguradora, numeroSiniestro, daniosRecibidos } = req.body;
     const { factura } = req.files;
 
     const clientExist = await Client.findOne({ patente });
@@ -46,6 +67,9 @@ const crearCliente = async (req, res) => {
     if (clientExist) {
       return res.status(400).json({ message: "El cliente ya existe" });
     }
+
+    dañosArray = JSON.parse(daniosRecibidos);
+    req.body.daniosRecibidos = dañosArray;
 
     if (factura) {
       const result = await cloudinary.v2.uploader.upload(factura.path);
@@ -158,4 +182,5 @@ module.exports = {
   getAutoId,
   agregarNuevoEstado,
   subirNuevaFactura,
+  eliminarDanio,
 };
